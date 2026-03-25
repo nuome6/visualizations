@@ -1,0 +1,5 @@
+{
+  "name": "顺序表可视化教学",
+  "description": "一个用于演示顺序表（数组）基本操作（插入、删除、查找）的可视化教学工具。",
+  "requestFramePermissions": []
+}
