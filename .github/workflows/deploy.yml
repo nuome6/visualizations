@@ -2,26 +2,37 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - name: Build seq-list
         working-directory: ./seq-list
         run: |
           npm install
           npm run build
-      - name: Prepare deploy
+      - name: Prepare dist
         run: |
-          mkdir -p dist/seq-list
-          cp -r seq-list/dist/* dist/seq-list/
+          mkdir -p _site/seq-list
+          cp -r seq-list/dist/* _site/seq-list/
       - name: Create index page
         run: |
-          cat > dist/index.html << 'EOF'
+          cat > _site/index.html << 'EOF'
           <!DOCTYPE html>
           <html>
           <head><meta charset="UTF-8"><title>可视化工具集</title></head>
@@ -33,7 +44,16 @@ jobs:
           </body>
           </html>
           EOF
-      - uses: peaceiris/actions-gh-pages@v3
+      - uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
