@@ -1,0 +1,39 @@
+name: Deploy to GitHub Pages
+on:
+  push:
+    branches: [main]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build seq-list
+        working-directory: ./seq-list
+        run: |
+          npm install
+          npm run build
+      - name: Prepare deploy
+        run: |
+          mkdir -p dist/seq-list
+          cp -r seq-list/dist/* dist/seq-list/
+      - name: Create index page
+        run: |
+          cat > dist/index.html << 'ENDOFHTML'
+          <!DOCTYPE html>
+          <html>
+          <head><meta charset="UTF-8"><title>可视化工具集</title></head>
+          <body style="font-family:sans-serif;padding:40px;max-width:800px;margin:0 auto">
+          <h1>可视化工具集</h1>
+          <ul style="font-size:18px;line-height:2">
+            <li><a href="/seq-list/">顺序表可视化</a></li>
+          </ul>
+          </body>
+          </html>
+          ENDOFHTML
+      - uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
