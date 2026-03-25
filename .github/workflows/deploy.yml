@@ -14,22 +14,40 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Build seq-list
-        working-directory: ./seq-list
+      - name: Build all projects with package.json
         run: |
-          npm install
-          npm run build
-      - name: Prepare dist
+          for dir in */; do
+            if [ -f "$dir/package.json" ]; then
+              echo "Building $dir"
+              cd "$dir"
+              npm install
+              npm run build
+              cd ..
+            fi
+          done
+      - name: Prepare deploy
         run: |
-          mkdir -p _site/seq-list
-          cp -r seq-list/dist/* _site/seq-list/
+          mkdir -p _site
+          for dir in */; do
+            name=${dir%/}
+            if [ -d "$dir/dist" ]; then
+              mkdir -p "_site/$name"
+              cp -r "$dir/dist/"* "_site/$name/"
+            elif [ -f "$dir/index.html" ]; then
+              mkdir -p "_site/$name"
+              cp -r "$dir/"* "_site/$name/"
+            fi
+          done
       - name: Create index page
         run: |
           cat > _site/index.html << 'EOF'
@@ -39,7 +57,7 @@ jobs:
           <body style="font-family:sans-serif;padding:40px;max-width:800px;margin:0 auto">
           <h1>可视化工具集</h1>
           <ul style="font-size:18px;line-height:2">
-            <li><a href="/seq-list/">顺序表可视化</a></li>
+            <li><a href="/visualizations/seq-list/">顺序表可视化</a></li>
           </ul>
           </body>
           </html>
@@ -47,13 +65,5 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
